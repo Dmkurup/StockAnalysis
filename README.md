@@ -37,4 +37,5 @@ Publish analysis report for stock symbols
 +----------+---------------------------+--------------+---------------+--------------+-------------+------------+
 
 
+
 Process finished with exit code 0
