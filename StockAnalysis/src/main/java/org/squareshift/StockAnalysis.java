@@ -30,8 +30,8 @@ public class StockAnalysis {
         Dataset<Row> stockSymbolDF= app.prepareStockSymbolDF(sparkSession,symbolMetadataDF).persist();
         app.publishSummaryReport(stockSymbolDF,"Summary Report (All Time)","summaryReport");
         String[]sectors =new String[]{"TECHNOLOGY","FINANCE"};
-        app.publishTimelyReport(sparkSession,"2021-01-01","2021-05-26",sectors,stockSymbolDF);
-        app.publishTimelyPerSector(sparkSession,"2021-01-01","2021-05-26",sectors,stockSymbolDF);
+        app.publishPerfAnalysisReport(sparkSession,"2021-01-01","2021-05-26",sectors,stockSymbolDF);
+        app.publishSymbolAggReport(sparkSession,"2021-01-01","2021-05-26",sectors,stockSymbolDF);
 
     }
     private Dataset<Row> processSymbolMetadata(SparkSession sparkSession){
@@ -73,17 +73,18 @@ public class StockAnalysis {
     private void publishSummaryReport(Dataset<Row> stockSymbolDF,String reportName,String outputFolder) {
         stockSymbolDF=stockSymbolDF
                 .groupBy("Sector")
-                .agg(round(avg("open"),2).cast("String").alias("Avg Open Price"),
+                .agg(round(avg("open"),2).alias("Avg Open Price"),
                      round(avg("close"),2).alias("Avg Close Price"),
-                     max("high").alias("Max High Price"),
-                     min("low").alias("Min Low Price"),
-                     round(avg("volume"),0).cast("String").alias("Avg Volume"));
+                     round(max("high"),2).alias("Max High Price"),
+                     round(min("low"),2).alias("Min Low Price"),
+                     round(avg("volume"),2).alias("Avg Volume"));
        System.out.println("<=========> Printing "+reportName+" <=========>");
        stockSymbolDF.show(false);
+        stockSymbolDF.printSchema();
        stockSymbolDF.coalesce(1).write().mode(SaveMode.Overwrite).option("header","true").csv(outputPath+outputFolder);
     }
 
-    private void publishTimelyReport(SparkSession sparkSession,String startDate, String endDate, String[]sectors,Dataset<Row> stockSymbolDF){
+    private void publishPerfAnalysisReport(SparkSession sparkSession,String startDate, String endDate, String[]sectors,Dataset<Row> stockSymbolDF){
         Set<String> set = Arrays.stream(sectors).collect(Collectors.toSet());
         Dataset<Row> filteredDateDF =stockSymbolDF
                 .filter(stockSymbolDF.col("timestamp").cast(DataTypes.TimestampType).geq(startDate))
@@ -93,24 +94,24 @@ public class StockAnalysis {
         publishSummaryReport(filteredDateDF ,"Performance analysis of each sector","perfAnalysisReport");
     }
 
-    private void publishTimelyPerSector(SparkSession sparkSession,String startDate, String endDate, String[]sectors,Dataset<Row> stockSymbolDF){
+    private void publishSymbolAggReport(SparkSession sparkSession,String startDate, String endDate, String[]sectors,Dataset<Row> stockSymbolDF){
         Set<String> set = Arrays.stream(sectors).collect(Collectors.toSet());
         Dataset<Row> filteredDateDF =stockSymbolDF
                 .filter((FilterFunction<Row>)r->set.contains(r.getAs("Sector")))
                 .filter(stockSymbolDF.col("timestamp").cast(DataTypes.TimestampType).geq(startDate))
                 .filter(stockSymbolDF.col("timestamp").cast(DataTypes.TimestampType).leq(endDate));
         //filteredDateDF.show(5);
-        publishTimelyPerSector(filteredDateDF ,"Symbol wise aggregate per Sector","symbolAggReport");
+        publishAggBySectorSymbol(filteredDateDF ,"Symbol wise aggregate per Sector","symbolAggReport");
     }
 
-    private void publishTimelyPerSector(Dataset<Row> stockSymbolDF,String reportName,String outputFolder) {;
+    private void publishAggBySectorSymbol(Dataset<Row> stockSymbolDF,String reportName,String outputFolder) {;
         stockSymbolDF=stockSymbolDF
                 .groupBy("Sector","Name")
-                .agg(round(avg("open"),2).cast("String").alias("Avg Open Price"),
+                .agg(round(avg("open"),2).alias("Avg Open Price"),
                         round(avg("close"),2).alias("Avg Close Price"),
-                        max("high").alias("Max High Price"),
-                        min("low").alias("Min Low Price"),
-                        round(avg("volume"),0).cast("String").alias("Avg Volume"))
+                        round(max("high"),2).alias("Max High Price"),
+                        round(min("low"),2).alias("Min Low Price"),
+                        round(avg("volume").cast(DataTypes.FloatType),2).alias("Avg Volume"))
                 .orderBy("Sector");
         System.out.println("<=========> Printing "+reportName+" <=========>");
         stockSymbolDF.show(false);
