@@ -12,6 +12,18 @@ import java.util.List;
 
 public class StockAnalysisUtils {
 
+    public static StructType getSymbolMetadataSchema() {
+        StructType symbolMetadataSchema = DataTypes.createStructType(new StructField[]{
+                DataTypes.createStructField("Symbol",DataTypes.StringType, false),
+                DataTypes.createStructField("Name",DataTypes.StringType, false),
+                DataTypes.createStructField("Country",DataTypes.StringType, false),
+                DataTypes.createStructField("Sector",DataTypes.StringType, false),
+                DataTypes.createStructField("Industry",DataTypes.StringType, false),
+                DataTypes.createStructField("Address",DataTypes.StringType, false)
+        });
+        return symbolMetadataSchema;
+    }
+
     public static StructType getSymbolStockSchema() {
         StructType symbolStockSchema = DataTypes.createStructType(new StructField[]{
                 DataTypes.createStructField("Symbol", DataTypes.StringType, false),
